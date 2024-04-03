@@ -1,0 +1,192 @@
+﻿@page "/"
+@using VP_Lab_8.Shared.Models
+@inject HttpClient Http
+@using System.Net.Http.Json
+
+<PageTitle>Student Management System</PageTitle>
+
+<h1>Student Manager System</h1>
+
+<div>
+    <h2 style="color:cornflowerblue">Add Student</h2>
+
+    <form @onsubmit="AddStudent">
+        <div class="form-group">
+            <label for="Id">Id:</label>
+            <input type="number" class="form-control" id="Id" @bind="newStudent.Id" />
+        </div>
+        <div class="form-group">
+            <label for="name">Name:</label>
+            <input type="text" class="form-control" id="name" @bind="newStudent.Name" />
+        </div>
+        <div class="form-group">
+            <label for="semester">Semester:</label>
+            <input type="number" class="form-control" id="semester" @bind="newStudent.Semester" />
+        </div>
+        <button style="margin:10px 0" type="submit" class="btn btn-primary">Add Student</button>
+    </form>
+</div>
+
+<div>
+    <h2 style="color:cornflowerblue">View Student</h2>
+
+    <form @onsubmit="ViewStudentByID">
+        <div class="form-group">
+            <label for="viewId">Enter Student Id to View:</label>
+            <input type="number" class="form-control" id="viewId" @bind="viewStudent" />
+        </div>
+        <button style="margin:10px 0" type="submit" class="btn btn-primary">View Student</button>
+    </form>
+</div>
+
+@if(viewStudentBool)
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Semester</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var person in persons)
+            {
+                if (person.Id == viewStudent)
+                {
+                    <tr>
+                        <td width="10%">@person.Id</td>
+                        <td width="25%">@person.Name</td>
+                        <td width="15%">@person.Semester</td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+}
+
+@if (!editMode)
+{
+    <h2 style="color:cornflowerblue">Edit Student</h2>
+    <form @onsubmit="UpdateStudent">
+        <div class="form-group">
+            <label for="editId">Enter Id to Edit:</label>
+            <input type="number"  class="form-control" id="editId" @bind="editStudent.Id" />
+        </div>
+        <div class="form-group">
+            <label for="editName">Name:</label>
+            <input type="text" class="form-control" id="editName" @bind="editStudent.Name" />
+        </div>
+        <div class="form-group">
+            <label for="editSemester">Semester:</label>
+            <input type="number" class="form-control" id="editSemester" @bind="editStudent.Semester" />
+        </div>
+        <button style="margin:10px 0" type="submit" class="btn btn-primary">Update Student</button>
+    </form>
+}
+
+<h3 style="color:cornflowerblue">Database Record</h3>
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Semester</th>
+            <th>ToDelete</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (persons == null || persons.Count == 0)
+        {
+            <tr>
+                <td colspan="3" align="center">No Data Found!</td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var person in persons)
+            {
+                <tr>
+                    <td width="10%">@person.Id</td>
+                    <td width="25%">@person.Name</td>
+                    <td width="15%">@person.Semester</td>
+                    <td><button class="btn btn-danger" @onclick="() => DeleteStudent(person.Id)">Delete</button></td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<Persons> persons;
+    private Persons newStudent = new Persons();
+    private Persons editStudent = new Persons();
+    private bool editMode = false;
+    private int viewStudent = 0;
+    private bool viewStudentBool = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await FetchStudents();
+    }
+
+    private async Task FetchStudents()
+    {
+        persons = await Http.GetFromJsonAsync<List<Persons>>("/api/Clients/Get");
+    }
+
+    private async Task AddStudent()
+    {
+        if (!string.IsNullOrEmpty(newStudent.Name) && newStudent.Semester > 0)
+        {
+            await Http.PostAsJsonAsync("/api/Clients/Create", newStudent);
+            newStudent = new Persons(); // Clear the form after submission
+            await FetchStudents(); // Refresh the student list
+        }
+    }
+
+    private void EditStudent(Persons student)
+    {
+        editStudent = new Persons
+            {
+                Id = student.Id,
+                Name = student.Name,
+                Semester = student.Semester
+            };
+        editMode = true;
+    }
+
+    private async Task UpdateStudent()
+    {
+        if (!string.IsNullOrEmpty(editStudent.Name) && editStudent.Semester > 0)
+        {
+            await Http.PutAsJsonAsync("/api/Clients/Edit", editStudent);
+            editStudent = new Persons(); 
+            editMode = false;
+            await FetchStudents(); 
+        }
+    }
+
+    private async Task DeleteStudent(int id)
+    {
+        if (id > 0)
+        {
+            await Http.DeleteAsync($"/api/Clients/Delete/{id}");
+            await FetchStudents(); 
+        }
+    }
+
+    private async Task ViewStudent(int id)
+    {
+        if (id > 0)
+        {
+            await Http.DeleteAsync($"/api/Clients/Details/{id}");
+            await FetchStudents(); 
+        }
+    }
+    private async Task ViewStudentByID()
+    {
+        ViewStudent(viewStudent);
+        viewStudentBool = true;
+    }
+}
